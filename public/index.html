@@ -14,7 +14,10 @@
     <title>Grey Goo</title>
 </head>
 <body>
-    <canvas width="500" height="500" id="canvas"></canvas>
+    <canvas width="500" height="500" id="canvas" style="margin-top: 14px;"></canvas>
     <div id="root"></div>
+    <script>
+      (function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='//rawgit.com/mrdoob/stats.js/master/build/stats.min.js';document.head.appendChild(script);})()
+    </script>
 </body>
 </html>

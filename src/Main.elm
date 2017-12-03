@@ -1,5 +1,6 @@
 port module Main exposing (..)
 
+import AnimationFrame
 import Dict exposing (Dict)
 import Html exposing (Html, div, h1, img, text)
 import List.Extra
@@ -29,7 +30,7 @@ main =
         { view = view
         , init = init
         , update = update
-        , subscriptions = \_ -> Time.every (Time.second * 0.1) Tick
+        , subscriptions = subscriptions
         }
 
 
@@ -43,6 +44,7 @@ init seed =
                 }
               )
             ]
+    , cachedPop = 1
     , seed = Random.initialSeed seed
     }
         ! [ drawNewCells [ genesisPt ] ]
@@ -72,13 +74,14 @@ getNeighborPts ( x, y ) =
 
 numPtsToGrow : Int -> Int
 numPtsToGrow population =
-    max 1 (population // 10)
+    --max 1 (population // 10)
+    1
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ borderCells, seed } as model) =
+update msg ({ borderCells, cachedPop, seed } as model) =
     case msg of
-        Tick _ ->
+        Tick timeDelta ->
             let
                 growablePts =
                     borderCells
@@ -90,7 +93,7 @@ update msg ({ borderCells, seed } as model) =
                 ( ptsToGrow, newSeed ) =
                     Random.step
                         (Random.List.shuffle growablePts
-                            |> Random.map (List.take (numPtsToGrow (Dict.size borderCells)))
+                            |> Random.map (List.take (numPtsToGrow cachedPop))
                         )
                         seed
 
@@ -98,14 +101,10 @@ update msg ({ borderCells, seed } as model) =
                     ptsToGrow
                         |> List.foldl
                             (\pt cells ->
-                                let
-                                    emptyNeighbors =
-                                        getNeighborPts pt
-                                in
                                 Dict.insert pt
                                     { pt = pt
                                     , emptyNeighbors =
-                                        keepIfNotIn emptyNeighbors (Dict.keys borderCells)
+                                        keepIfNotIn (getNeighborPts pt) borderCells
                                     }
                                     cells
                             )
@@ -118,7 +117,7 @@ update msg ({ borderCells, seed } as model) =
                             (\pt ({ emptyNeighbors } as cell) ->
                                 { cell
                                     | emptyNeighbors =
-                                        keepIfNotIn emptyNeighbors (Dict.keys newBorderCells)
+                                        keepIfNotIn emptyNeighbors newBorderCells
                                 }
                             )
                         -- remove not-really-empty neighbors
@@ -127,14 +126,21 @@ update msg ({ borderCells, seed } as model) =
             ( { model
                 | seed = newSeed
                 , borderCells = newerBorderCells
+                , cachedPop = cachedPop + List.length ptsToGrow
               }
             , drawNewCells ptsToGrow
             )
 
 
-keepIfNotIn : List a -> List a -> List a
-keepIfNotIn xs ys =
-    List.Extra.filterNot (\x -> List.member x ys) xs
+keepIfNotIn : List Pt -> Dict Pt Cell -> List Pt
+keepIfNotIn pts cells =
+    List.Extra.filterNot (\pt -> Dict.member pt cells) pts
+
+
+subscriptions : Model -> Sub Msg
+subscriptions { cachedPop } =
+    --Time.every (Time.second * secMod) Tick
+    AnimationFrame.diffs Tick
 
 
 
@@ -142,9 +148,9 @@ keepIfNotIn xs ys =
 
 
 view : Model -> Html Msg
-view { borderCells } =
+view { cachedPop, borderCells } =
     let
-        pop =
+        borderPop =
             borderCells
                 |> Dict.size
 
@@ -156,6 +162,7 @@ view { borderCells } =
                 |> List.length
     in
     div []
-        [ div [] [ text ("Border population: " ++ toString pop) ]
+        [ div [] [ text ("Total population: " ++ toString cachedPop) ]
+        , div [] [ text ("Border population: " ++ toString borderPop) ]
         , div [] [ text ("Available Spaces: " ++ toString availableSpaces) ]
         ]
