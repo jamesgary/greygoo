@@ -9,6 +9,7 @@ type alias Model =
     { borderCells : Dict Pt Cell
     , cachedPop : Int
     , seed : Random.Seed
+    , paused : Bool
     }
 
 
@@ -30,3 +31,4 @@ type alias Pt =
 
 type Msg
     = Tick Time.Time
+    | TogglePause

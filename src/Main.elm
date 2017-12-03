@@ -8,6 +8,7 @@ import Random
 import Random.List
 import Time
 import Types exposing (..)
+import View exposing (view)
 
 
 port drawNewCells : List Pt -> Cmd msg
@@ -46,6 +47,7 @@ init seed =
             ]
     , cachedPop = 1
     , seed = Random.initialSeed seed
+    , paused = False
     }
         ! [ drawNewCells [ genesisPt ] ]
 
@@ -88,7 +90,7 @@ takeRandomly amt list seed =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ borderCells, cachedPop, seed } as model) =
+update msg ({ borderCells, cachedPop, seed, paused } as model) =
     case msg of
         Tick timeDelta ->
             let
@@ -128,13 +130,15 @@ update msg ({ borderCells, cachedPop, seed } as model) =
                         -- remove not-really-empty neighbors
                         |> Dict.filter (\pt { emptyNeighbors } -> not (List.isEmpty emptyNeighbors))
             in
-            ( { model
+            { model
                 | seed = newSeed
                 , borderCells = newerBorderCells
                 , cachedPop = cachedPop + List.length ptsToGrow
-              }
-            , drawNewCells ptsToGrow
-            )
+            }
+                ! [ drawNewCells ptsToGrow ]
+
+        TogglePause ->
+            { model | paused = not paused } ! []
 
 
 keepIfNotIn : List Pt -> Dict Pt Cell -> List Pt
@@ -143,31 +147,9 @@ keepIfNotIn pts cells =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions { cachedPop } =
-    --Time.every (Time.second * secMod) Tick
-    AnimationFrame.diffs Tick
-
-
-
----- VIEW ----
-
-
-view : Model -> Html Msg
-view { cachedPop, borderCells } =
-    let
-        borderPop =
-            borderCells
-                |> Dict.size
-
-        availableSpaces =
-            borderCells
-                |> Dict.values
-                |> List.map .emptyNeighbors
-                |> List.Extra.unique
-                |> List.length
-    in
-    div []
-        [ div [] [ text ("Total population: " ++ toString cachedPop) ]
-        , div [] [ text ("Border population: " ++ toString borderPop) ]
-        , div [] [ text ("Available Spaces: " ++ toString availableSpaces) ]
-        ]
+subscriptions { paused } =
+    if paused then
+        Sub.none
+    else
+        --Time.every (Time.second * secMod) Tick
+        AnimationFrame.diffs Tick
