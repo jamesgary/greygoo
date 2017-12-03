@@ -9,9 +9,6 @@ import Time
 import Types exposing (..)
 
 
-port initBorder : List Pt -> Cmd msg
-
-
 port drawNewCells : List Pt -> Cmd msg
 
 
@@ -19,7 +16,7 @@ width =
     100
 
 
-heigth =
+height =
     100
 
 
@@ -27,18 +24,17 @@ genesisPt =
     ( 50, 50 )
 
 
-main : Program Never Model Msg
 main =
-    Html.program
+    Html.programWithFlags
         { view = view
         , init = init
         , update = update
-        , subscriptions = \_ -> Time.every Time.second Tick
+        , subscriptions = \_ -> Time.every (Time.second * 0.1) Tick
         }
 
 
-init : ( Model, Cmd Msg )
-init =
+init : Int -> ( Model, Cmd Msg )
+init seed =
     { borderCells =
         Dict.fromList
             [ ( genesisPt
@@ -47,67 +43,31 @@ init =
                 }
               )
             ]
-    , seed = Random.initialSeed 420
+    , seed = Random.initialSeed seed
     }
         ! [ drawNewCells [ genesisPt ] ]
 
 
-allDirs : List Dir
-allDirs =
-    [ North, East, South, West ]
-
-
-randomDirGen : Random.Generator Dir
-randomDirGen =
-    Random.map
-        (\n ->
-            case n of
-                0 ->
-                    North
-
-                1 ->
-                    East
-
-                2 ->
-                    South
-
-                _ ->
-                    West
-        )
-        (Random.int 0 3)
-
-
-ptWithDir : Pt -> Dir -> Pt
-ptWithDir ( x, y ) dir =
-    case dir of
-        North ->
-            ( x, y - 1 )
-
-        East ->
-            ( x + 1, y )
-
-        South ->
-            ( x, y + 1 )
-
-        West ->
-            ( x - 1, y )
-
-
 getNeighborPts : Pt -> List Pt
 getNeighborPts ( x, y ) =
-    [ ( x, y - 1 )
-    , ( x + 1, y )
-    , ( x, y + 1 )
-    , ( x - 1, y )
+    [ if x > 0 then
+        Just ( x - 1, y )
+      else
+        Nothing
+    , if x + 1 < width then
+        Just ( x + 1, y )
+      else
+        Nothing
+    , if y > 0 then
+        Just ( x, y - 1 )
+      else
+        Nothing
+    , if y + 1 < height then
+        Just ( x, y + 1 )
+      else
+        Nothing
     ]
-
-
-
----- UPDATE ----
-
-
-type Msg
-    = Tick Time.Time
+        |> List.filterMap identity
 
 
 numPtsToGrow : Int -> Int
@@ -161,6 +121,8 @@ update msg ({ borderCells, seed } as model) =
                                         keepIfNotIn emptyNeighbors (Dict.keys newBorderCells)
                                 }
                             )
+                        -- remove not-really-empty neighbors
+                        |> Dict.filter (\pt { emptyNeighbors } -> not (List.isEmpty emptyNeighbors))
             in
             ( { model
                 | seed = newSeed
@@ -181,6 +143,19 @@ keepIfNotIn xs ys =
 
 view : Model -> Html Msg
 view { borderCells } =
+    let
+        pop =
+            borderCells
+                |> Dict.size
+
+        availableSpaces =
+            borderCells
+                |> Dict.values
+                |> List.map .emptyNeighbors
+                |> List.Extra.unique
+                |> List.length
+    in
     div []
-        [ div [] [ text ("Population: " ++ toString (Dict.size borderCells)) ]
+        [ div [] [ text ("Border population: " ++ toString pop) ]
+        , div [] [ text ("Available Spaces: " ++ toString availableSpaces) ]
         ]

@@ -2,6 +2,7 @@ module Types exposing (..)
 
 import Dict exposing (Dict)
 import Random
+import Time
 
 
 type alias Model =
@@ -26,8 +27,5 @@ type alias Pt =
     ( Int, Int )
 
 
-type Dir
-    = North
-    | East
-    | South
-    | West
+type Msg
+    = Tick Time.Time
