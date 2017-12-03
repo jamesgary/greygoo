@@ -78,6 +78,15 @@ numPtsToGrow population =
     1
 
 
+takeRandomly : Int -> List a -> Random.Seed -> ( List a, Random.Seed )
+takeRandomly amt list seed =
+    Random.step
+        (Random.List.shuffle list
+            |> Random.map (List.take amt)
+        )
+        seed
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ({ borderCells, cachedPop, seed } as model) =
     case msg of
@@ -91,11 +100,7 @@ update msg ({ borderCells, cachedPop, seed } as model) =
                         |> List.Extra.unique
 
                 ( ptsToGrow, newSeed ) =
-                    Random.step
-                        (Random.List.shuffle growablePts
-                            |> Random.map (List.take (numPtsToGrow cachedPop))
-                        )
-                        seed
+                    takeRandomly (numPtsToGrow cachedPop) growablePts seed
 
                 newBorderCells =
                     ptsToGrow
