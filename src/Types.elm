@@ -8,8 +8,12 @@ import Time
 type alias Model =
     { borderCells : Dict Pt Cell
     , cachedPop : Int
+    , ageLastGrown : Time.Time
     , seed : Random.Seed
     , paused : Bool
+    , age : Time.Time
+    , growthRate : Float
+    , genRate : Time.Time
     }
 
 
@@ -19,16 +23,13 @@ type alias Cell =
     }
 
 
-type CellState
-    = Empty
-    | BorderCell
-    | InnerCell
-
-
 type alias Pt =
     ( Int, Int )
 
 
 type Msg
     = Tick Time.Time
+    | Reset
     | TogglePause
+    | ChangeGrowthRate String
+    | ChangeGenRate String

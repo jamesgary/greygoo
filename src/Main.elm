@@ -14,6 +14,9 @@ import View exposing (view)
 port drawNewCells : List Pt -> Cmd msg
 
 
+port resetCanvas : List Pt -> Cmd msg
+
+
 width =
     100
 
@@ -24,6 +27,14 @@ height =
 
 genesisPt =
     ( 50, 50 )
+
+
+defaultGrowthRate =
+    5
+
+
+defaultGenRate =
+    60
 
 
 main =
@@ -46,8 +57,12 @@ init seed =
               )
             ]
     , cachedPop = 1
+    , ageLastGrown = 0
+    , age = 0
+    , growthRate = defaultGrowthRate
     , seed = Random.initialSeed seed
     , paused = False
+    , genRate = defaultGenRate
     }
         ! [ drawNewCells [ genesisPt ] ]
 
@@ -94,51 +109,120 @@ update msg ({ borderCells, cachedPop, seed, paused } as model) =
     case msg of
         Tick timeDelta ->
             let
-                growablePts =
-                    borderCells
-                        |> Dict.values
-                        |> List.map .emptyNeighbors
-                        |> List.concat
-                        |> List.Extra.unique
-
-                ( ptsToGrow, newSeed ) =
-                    takeRandomly (numPtsToGrow cachedPop) growablePts seed
-
-                newBorderCells =
-                    ptsToGrow
-                        |> List.foldl
-                            (\pt cells ->
-                                Dict.insert pt
-                                    { pt = pt
-                                    , emptyNeighbors =
-                                        keepIfNotIn (getNeighborPts pt) borderCells
-                                    }
-                                    cells
-                            )
-                            borderCells
-
-                -- now remove not-really-empty neighbors
-                newerBorderCells =
-                    newBorderCells
-                        |> Dict.map
-                            (\pt ({ emptyNeighbors } as cell) ->
-                                { cell
-                                    | emptyNeighbors =
-                                        keepIfNotIn emptyNeighbors newBorderCells
-                                }
-                            )
-                        -- remove not-really-empty neighbors
-                        |> Dict.filter (\pt { emptyNeighbors } -> not (List.isEmpty emptyNeighbors))
+                ( newModel, newCells ) =
+                    tick timeDelta model
             in
+            newModel ! [ drawNewCells newCells ]
+
+        Reset ->
             { model
-                | seed = newSeed
-                , borderCells = newerBorderCells
-                , cachedPop = cachedPop + List.length ptsToGrow
+                | borderCells =
+                    Dict.fromList
+                        [ ( genesisPt
+                          , { pt = genesisPt
+                            , emptyNeighbors = getNeighborPts genesisPt
+                            }
+                          )
+                        ]
+                , cachedPop = 1
+                , ageLastGrown = 0
+                , age = 0
             }
-                ! [ drawNewCells ptsToGrow ]
+                ! [ resetCanvas [ genesisPt ] ]
 
         TogglePause ->
             { model | paused = not paused } ! []
+
+        ChangeGenRate rateStr ->
+            { model | genRate = rateStr |> String.toFloat |> Result.withDefault 1 } ! []
+
+        ChangeGrowthRate rateStr ->
+            { model | growthRate = rateStr |> String.toFloat |> Result.withDefault 1 } ! []
+
+
+tick : Time.Time -> Model -> ( Model, List Pt )
+tick timeDelta ({ borderCells, cachedPop, ageLastGrown, genRate, growthRate, seed } as model) =
+    let
+        age =
+            timeDelta + model.age
+
+        agedModel =
+            { model | age = age }
+    in
+    if age >= ageLastGrown + genRate then
+        growModel (toFloat cachedPop * (growthRate / 100) |> ceiling) { agedModel | ageLastGrown = age }
+    else
+        ( agedModel, [] )
+
+
+
+--        amtCellsToGrow =
+--            growthRate * (timeSinceGrowth + timeDelta) / 1000
+--
+--        numCellsToGrow =
+--            floor amtCellsToGrow
+--    in
+--    if numCellsToGrow == 0 then
+--        ( { model | timeSinceGrowth = timeSinceGrowth + timeDelta }, [] )
+--    else
+--        let
+--            ( newModel, pts ) =
+--                growModel numCellsToGrow model
+--        in
+--        ( { newModel
+--            | timeSinceGrowth = growthRate * (amtCellsToGrow - toFloat numCellsToGrow) / 1000
+--            , age = age + timeDelta
+--          }
+--        , pts
+--        )
+
+
+growModel : Int -> Model -> ( Model, List Pt )
+growModel numCellsToGrow ({ borderCells, cachedPop, seed } as model) =
+    let
+        growablePts =
+            borderCells
+                |> Dict.values
+                |> List.map .emptyNeighbors
+                |> List.concat
+                |> List.Extra.unique
+
+        ( ptsToGrow, newSeed ) =
+            takeRandomly numCellsToGrow growablePts seed
+
+        newBorderCells =
+            ptsToGrow
+                |> List.foldl
+                    (\pt cells ->
+                        Dict.insert pt
+                            { pt = pt
+                            , emptyNeighbors =
+                                keepIfNotIn (getNeighborPts pt) borderCells
+                            }
+                            cells
+                    )
+                    borderCells
+
+        -- now remove not-really-empty neighbors
+        newerBorderCells =
+            newBorderCells
+                |> Dict.map
+                    (\pt ({ emptyNeighbors } as cell) ->
+                        { cell
+                            | emptyNeighbors =
+                                keepIfNotIn emptyNeighbors newBorderCells
+                        }
+                    )
+                -- remove not-really-empty neighbors
+                |> Dict.filter (\pt { emptyNeighbors } -> not (List.isEmpty emptyNeighbors))
+    in
+    ( { model
+        | seed = newSeed
+        , borderCells = newerBorderCells
+        , cachedPop = cachedPop + List.length ptsToGrow
+      }
+    , ptsToGrow
+    )
 
 
 keepIfNotIn : List Pt -> Dict Pt Cell -> List Pt
