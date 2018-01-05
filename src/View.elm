@@ -9,7 +9,7 @@ import Types exposing (..)
 
 
 view : Model -> Html Msg
-view { cachedPop, borderCells, genRate, growthRate, age } =
+view { cachedPop, cachedPopGainRate, borderCells, genRate, growthRate } =
     let
         borderPop =
             borderCells
@@ -23,10 +23,10 @@ view { cachedPop, borderCells, genRate, growthRate, age } =
                 |> List.length
     in
     div []
-        [ div [] [ text ("Age: " ++ toString age) ]
-        , div [] [ text ("Total population: " ++ toString cachedPop) ]
+        [ div [] [ text ("Total population: " ++ toString cachedPop) ]
         , div [] [ text ("Border population: " ++ toString borderPop) ]
         , div [] [ text ("Available Spaces: " ++ toString availableSpaces) ]
+        , div [] [ text ("Cells gained per generation: " ++ toString cachedPopGainRate) ]
         , div []
             [ input [ type_ "checkbox", onClick TogglePause ] []
             , text "Pause"
@@ -47,8 +47,9 @@ view { cachedPop, borderCells, genRate, growthRate, age } =
             [ input
                 [ type_ "range"
                 , onInput ChangeGrowthRate
-                , Html.Attributes.min "1"
-                , Html.Attributes.max "20"
+                , Html.Attributes.step "0.01"
+                , Html.Attributes.min "0"
+                , Html.Attributes.max "1"
                 , Html.Attributes.defaultValue (toString growthRate)
                 ]
                 []

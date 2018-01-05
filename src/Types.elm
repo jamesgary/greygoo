@@ -8,6 +8,7 @@ import Time
 type alias Model =
     { borderCells : Dict Pt Cell
     , cachedPop : Int
+    , cachedPopGainRate : Int
     , ageLastGrown : Time.Time
     , seed : Random.Seed
     , paused : Bool

@@ -30,7 +30,7 @@ genesisPt =
 
 
 defaultGrowthRate =
-    5
+    0.5
 
 
 defaultGenRate =
@@ -57,6 +57,7 @@ init seed =
               )
             ]
     , cachedPop = 1
+    , cachedPopGainRate = 1
     , ageLastGrown = 0
     , age = 0
     , growthRate = defaultGrowthRate
@@ -150,31 +151,19 @@ tick timeDelta ({ borderCells, cachedPop, ageLastGrown, genRate, growthRate, see
             { model | age = age }
     in
     if age >= ageLastGrown + genRate then
-        growModel (toFloat cachedPop * (growthRate / 100) |> ceiling) { agedModel | ageLastGrown = age }
+        let
+            prevPop =
+                cachedPop
+
+            cellsToGrow =
+                toFloat cachedPop ^ growthRate |> ceiling
+
+            ( newModel, pts ) =
+                growModel (toFloat cachedPop ^ growthRate |> ceiling) { agedModel | ageLastGrown = age }
+        in
+        ( { newModel | cachedPopGainRate = newModel.cachedPop - prevPop }, pts )
     else
         ( agedModel, [] )
-
-
-
---        amtCellsToGrow =
---            growthRate * (timeSinceGrowth + timeDelta) / 1000
---
---        numCellsToGrow =
---            floor amtCellsToGrow
---    in
---    if numCellsToGrow == 0 then
---        ( { model | timeSinceGrowth = timeSinceGrowth + timeDelta }, [] )
---    else
---        let
---            ( newModel, pts ) =
---                growModel numCellsToGrow model
---        in
---        ( { newModel
---            | timeSinceGrowth = growthRate * (amtCellsToGrow - toFloat numCellsToGrow) / 1000
---            , age = age + timeDelta
---          }
---        , pts
---        )
 
 
 growModel : Int -> Model -> ( Model, List Pt )
