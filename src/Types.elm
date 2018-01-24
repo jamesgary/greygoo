@@ -30,6 +30,7 @@ type alias Pt =
 
 type Msg
     = Tick Time.Time
+    | Step
     | Reset
     | TogglePause
     | ChangeGrowthRate String

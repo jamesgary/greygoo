@@ -106,7 +106,7 @@ takeRandomly amt list seed =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ borderCells, cachedPop, seed, paused } as model) =
+update msg ({ borderCells, cachedPop, growthRate, seed, paused } as model) =
     case msg of
         Tick timeDelta ->
             let
@@ -114,6 +114,19 @@ update msg ({ borderCells, cachedPop, seed, paused } as model) =
                     tick timeDelta model
             in
             newModel ! [ drawNewCells newCells ]
+
+        Step ->
+            let
+                prevPop =
+                    cachedPop
+
+                cellsToGrow =
+                    toFloat cachedPop ^ growthRate |> ceiling
+
+                ( newModel, pts ) =
+                    growModel (toFloat cachedPop ^ growthRate |> ceiling) model
+            in
+            { newModel | cachedPopGainRate = newModel.cachedPop - prevPop } ! [ drawNewCells pts ]
 
         Reset ->
             { model

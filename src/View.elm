@@ -31,6 +31,7 @@ view { cachedPop, cachedPopGainRate, borderCells, genRate, growthRate } =
             [ input [ type_ "checkbox", onClick TogglePause ] []
             , text "Pause"
             ]
+        , button [ onClick Step ] [ text "Step" ]
         , button [ onClick Reset ] [ text "Reset" ]
         , div []
             [ input
